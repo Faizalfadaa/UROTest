@@ -1,9 +1,6 @@
-from typing import List, Tuple
 import random
-from itertools import count
 import pandas as pd
 
-    
 class Robot():
     def __init__(self, 
                  id:int,
@@ -21,11 +18,11 @@ class Robot():
     def attack(self, attack_type, target):
         print(self.name + ' attack '+ target.name + ' using '+ str(attack_type))
         if attack_type == 'tackle':
-            target.health -= 30 
+            target.health = max(0, target.health - 30)
         if attack_type == 'hammer arm':
-            target.health -= 35
+            target.health = max(0, target.health - 30)
         if attack_type == 'high jump kick':
-            target.health -= 40
+            target.health = max(0, target.health - 30)
         
     def defense(self, defence_type):
         print(self.name + ' defended using '+ str(defence_type))
@@ -36,11 +33,8 @@ class Robot():
         if defence_type == 'protect':
             self.health += 15
 
-    def setalive(self):
-        if self.health <= 0:
-            self.alive = False
-        if self.health > 0:
-            self.alive = True
+    def set_alive(self):
+        self.alive = self.health > 0
 
 class Battle():
     def __init__(self, robot_a,robot_b):
@@ -56,12 +50,9 @@ class Battle():
     def updateStatus(robot_a,robot_b, df):
         df.loc[df['id']== robot_a.id,['alive']]= robot_a.alive
         df.loc[df['id']== robot_b.id,['alive']]= robot_b.alive
-        print(robot_a.health)
-        print(robot_b.health)
-        if robot_a.alive == False:
-            df.loc[df['id']== robot_a.id,['health']] = 0
-        if robot_b.alive == False:
-            df.loc[df['id']== robot_b.id,['health']] = 0
+
+        df.loc[df['id']== robot_a.id,['health']] = max(robot_a.health, 0)
+        df.loc[df['id']== robot_b.id,['health']] = max(robot_b.health, 0)
 
     def battle(robot_a, robot_b):
         # battle
@@ -72,36 +63,49 @@ class Battle():
             # a attack b
             attack_type = random.choice(attack_list)
             robot_a.attack(attack_type,robot_b)
-
+            
+            robot_b.set_alive()
+            if not robot_b.alive:
+                print(f"{robot_a.name} won the battle!")
+                print('Battle Complete!')
+                break
+            
             # b defence
             defence_type = random.choice(defence_list)
             robot_b.defense(defence_type)
-            print(robot_b.name +' has '+ str(robot_b.health) + ' health remaining')
+            print(f'{robot_b.name} has {str(robot_b.health)} health remaining')
 
             # b attack a
             attack_type = random.choice(attack_list)
             robot_b.attack(attack_type,robot_a)
+            
+            robot_a.set_alive()
+            if not robot_a.alive:
+                print(f"{robot_b.name} won the battle!")
+                print('Battle Complete!')
+                break
 
             # a defence
             defence_type = random.choice(defence_list)
             robot_a.defense(defence_type)
-            print(robot_a.name + ' has '+ str(robot_a.health) + ' health remaining')
+            print(f'{robot_a.name} has {str(robot_a.health)} health remaining')
 
             #check_winner
-            robot_a.setalive()
-            robot_b.setalive()
-            if robot_a.alive == False:
-                print(robot_b.name +' won the battle! ')
+            robot_a.set_alive()
+            robot_b.set_alive()
+            if not robot_a.alive:
+                print(f'{robot_b.name} won the battle! ')
                 print('Battle Complete!')
                 running = False
 
-            elif robot_b.alive == False:    
-                print(robot_a.name +' won the battle! ')
+            elif not robot_b.alive:  
+                print(f'{robot_a.name} won the battle! ')
                 print('Battle Complete!')
                 running = False
 
 class Game():
     def add_robot():
+        print('=====================================')
         start = input('Do you wish to battle? (yes/no)')
         if start == 'yes':
             Game.start_game()
@@ -119,10 +123,11 @@ class Game():
         print(f'-- RoboOne')
         print(f'-- RoboTwo')
         print(f'-- RoboThree')
-
+    
     def start_game():
         #get robot with alive = true
         df_alive = df.where(df['alive'] == True)
+
         #pilih 2 robot random
         df_alive = df_alive[~df_alive['id'].isna()].sample(2) 
 
@@ -141,6 +146,9 @@ class Game():
 
         #update HP dan status
         Battle.updateStatus(robot_a,robot_b,df)
+        print('=====================================')
+        print("Battle Result")
+        print('=====================================')
         print(df)
 
 # robot variables
@@ -149,8 +157,6 @@ defence_type = ''
 initial_health = 100
 
 # insert into robot attribute pandas table
-# untuk menyimpan data robot 
-
 df = pd.DataFrame({'id':[1,2,3],
                               'nama':['RoboOne','RoboTwo','RoboThree'],
                               'health':[initial_health, initial_health, initial_health],
